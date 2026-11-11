@@ -33,3 +33,18 @@ def get_registration():
     session = Session(engine)
     item = session.query(Package).all()
     return item
+
+def get_specific_package(package_id):
+    session = Session(engine)
+    item = session.query(Package).filter(Package.id == package_id).first()
+    return item
+
+def update_package(package_id, weight, destination, status):
+    session = Session(engine)
+    item = session.query(Package).filter(Package.id == package_id).first()
+    item.weight = weight
+    item.destination = destination
+    item.status = status
+
+    session.commit()
+    session.close()
