@@ -1,29 +1,33 @@
-from sqlalchemy import Integer, String, Column, create_engine, ForeignKey, DateTime
-from sqlalchemy.orm import Session, declarative_base
-from datetime import date, timedelta
+from datetime import date, datetime
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, create_engine
+from sqlalchemy.orm import Session, declarative_base, relationship, sessionmaker, synonym
 from fastapi import HTTPException
 
-DB_PATH = "lab.db"
+DB_PATH = "warehouse.db"
 engine = create_engine(f"sqlite:///{DB_PATH}")
 Base = declarative_base()
 
-class Equipment(Base):
-    __tablename__ = "equipment"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    type = Column(String)
-    lab_room = Column(String)
-    in_service = Column(Integer, default=1)
 
-
-class Booking(Base):
-    __tablename__ = "bookings"
+class DispatchBatch(Base):
+    __tablename__ = "dispatch_batches"
     id = Column(Integer, primary_key=True)
-    equipment_id = Column(Integer, ForeignKey("equipment.id"), nullable=False)
-    roll_no = Column(String, nullable=False)
-    booking_date = Column(String, nullable=False)
-    booked_on = Column(DateTime, default=date.today)
-    cancelled = Column(Integer, nullable=False, default=0)
+    batch_number = Column(String)
+    destination = Column(String)
+    vehicle = Column(String)
+    dispatch_status = Column(String)
+    dispatch_date = Column(Date)
+    created_at = Column(DateTime, default=datetime.now)
+
+class Package(Base):
+    __tablename__ = "packages"
+    id = Column(Integer, primary_key=True)
+    package_name = Column(String)
+    destination = Column(String)
+    weight = Column(Float)
+    arrival_date = Column(Date, default=date.today)
+    status = Column(String)
+    batch_id = Column(Integer, ForeignKey("dispatch_batches.id"), nullable=True)
+
 
 
 Base.metadata.create_all(engine)
