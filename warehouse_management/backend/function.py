@@ -48,3 +48,30 @@ def update_package(package_id, weight, destination, status):
 
     session.commit()
     session.close()
+
+
+def delete_specific_package(package_id):
+    session = Session(engine)
+    item = session.query(Package).filter(Package.id == package_id).first()
+
+    if item.status != "dispatched":
+        session.delete(item)
+
+    session.commit()
+    session.close()
+
+
+def filter_package(destination=None, status=None, arrival_date=None):
+    session = Session(engine)
+    query = session.query(Package)
+
+    if destination:
+        query = query.filter(Package.destination == destination)
+    if status:
+        query = query.filter(Package.status == status)
+    if arrival_date:
+        query = query.filter(Package.arrival_date == arrival_date)
+
+    item = query.all()
+    session.close()
+    return item
