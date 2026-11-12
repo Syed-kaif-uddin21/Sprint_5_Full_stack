@@ -1,5 +1,7 @@
 from datetime import date, datetime
-from sqlalchemy import Column, Integer, String, Float, Date, create_engine
+from itertools import count
+
+from sqlalchemy import Column, Integer, String, Float, Date, create_engine, ForeignKey
 from sqlalchemy.orm import Session, declarative_base
 from fastapi import HTTPException
 
@@ -16,6 +18,16 @@ class Package(Base):
     weight = Column(Float)
     arrival_date = Column(Date, default=date.today)
     status = Column(String)
+    batch_id = Column(String, ForeignKey("dispatch_batches.id"))
+
+class DispatchBatches(Base):
+    __tablename__ = "dispatch_batches"
+    id = Column(Integer, primary_key=True)
+    batch_number = Column(String)
+    destination = Column(String)
+    vehicle = Column(Float)
+    dispatch_date = Column(Date, default=date.today)
+    dispatch_status = Column(String)
 
 
 
@@ -75,3 +87,35 @@ def filter_package(destination=None, status=None, arrival_date=None):
     item = query.all()
     session.close()
     return item
+
+
+def filter_batch(destination=None, vehicle=None, dispatch_status=None):
+    session = Session(engine)
+    query = session.query(DispatchBatches)
+
+    if destination:
+        query = query.filter(DispatchBatches.destination == destination)
+    if vehicle:
+        query = query.filter(DispatchBatches.vehicle == vehicle)
+    if dispatch_status:
+        query = query.filter(DispatchBatches.dispatch_status == dispatch_status)
+
+    item = query.all()
+    session.close()
+    return item
+
+def dispatch_summary():
+    session = Session(engine)
+    query_count = session.query(Package).count()
+    query_pending = session.query(Package).filter(Package.status == "pending").count()
+    query_dispatched = session.query(Package).filter(Package.status == "dispatched").count()
+    query_destination_count = session.query(Package).group_by(Package.destination).count()
+
+    response = {
+        "query_count": query_count,
+        "query_pending": query_pending,
+        "query_dispatched": query_dispatched,
+        "query_destination_count": query_destination_count
+    }
+
+    return response

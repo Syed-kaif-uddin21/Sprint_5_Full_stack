@@ -29,3 +29,11 @@ def update_package(package_id:int, weight:float, destination :str, status:str):
 @app.delete("/packages/{package_id}")
 def delete_package(package_id:int):
     return function.delete_specific_package(package_id=package_id)
+
+@app.get("/batches/filter")
+def filter_batch(destination=None, vehicle=None, dispatch_status=None):
+    return function.filter_batch(destination=destination, vehicle=vehicle, dispatch_status=dispatch_status)
+
+@app.get("/batches/summary")
+def summary():
+    return function.dispatch_summary()
