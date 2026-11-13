@@ -35,6 +35,7 @@ class User(Base):
     user_id = Column(Integer, primary_key=True)
     username = Column(String)
     password = Column(String)
+    role = Column(String, default="user")
 
 Base.metadata.create_all(engine)
 
@@ -70,6 +71,9 @@ def update_package(package_id, weight, destination, status):
 def delete_specific_package(package_id):
     session = Session(engine)
     item = session.query(Package).filter(Package.id == package_id).first()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Package not found")
 
     if item.status != "dispatched":
         session.delete(item)
@@ -391,18 +395,21 @@ def verify_login(username, password):
     except VerifyMismatchError:
         session.close()
         return False
+    
+    user_role = user.role 
     session.close()
-    access_token = create_token(username=username, token_type="access")
-    refresh_token = create_token(username=username, token_type="refresh")
-    return {"access_token" : access_token, "refresh_token" : refresh_token}
+    access_token = create_token(username=username, role=user_role, token_type="access")
+    refresh_token = create_token(username=username, role=user_role, token_type="refresh")
+    return {"access_token": access_token, "refresh_token": refresh_token}
 
 
-def create_token(username, token_type):
+def create_token(username, token_type, role):
     time = ACCESS_TOKEN_EXPIRY
     if token_type == "refresh":
         time = REFRESH_TOKEN_EXPIRY
     payload = {
             "username": username,
+            "role": role,
             "token_type": token_type,
             "exp": datetime.now(timezone.utc) + timedelta(minutes=time),
         }
@@ -411,21 +418,23 @@ def create_token(username, token_type):
 
 def verify_token(token, token_type):
     try:
-        payload = jwt.decode(jwt=token,key=SECRET_KEY,algorithms=[ALGORITHM])
+        payload = jwt.decode(jwt=token, key=SECRET_KEY, algorithms=[ALGORITHM])
     except:
-        return False
+        return None
+    if payload.get("token_type") == token_type:
+        return {
+            "username": payload["username"],
+            "role": payload.get("role", "user")
+        }
+    return None
 
-    if payload["token_type"] == token_type:
-        return payload["username"]
-    return False
-
-def register_user(username, password):
+def register_user(username, password, role="user"):
     session = Session(engine)
     user_exist = session.query(User).filter(User.username == username).first()
     if user_exist is not None:
         session.close()
         return False
-    session.add(User(username=username, password=ph.hash(password)))
+    session.add(User(username=username, password=ph.hash(password), role=role))
     session.commit()
     session.close()
     return True

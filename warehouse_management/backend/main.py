@@ -56,9 +56,12 @@ def update_package(update_data: UpdatePackage, token = Header(None)):
 
 @app.delete("/packages/{package_id}")
 def delete_package(package_id:int, token = Header(None)):
-    username = function.verify_token(token, "access")
-    if not username:
+    user = function.verify_token(token, "access")
+    if not user:
         raise HTTPException(status_code=401)
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="You do not have permission to delete packages.")
+    
     return function.delete_specific_package(package_id=package_id)
 
 @app.get("/batches/filter")
@@ -92,7 +95,7 @@ def refresh(refresh_token):
     return {"access_token" : access_token}
 
 @app.post("/register_user")
-def register_user(username = Body(), password = Body()):
-    if function.register_user(username=username, password=password):
-        return ("message : user registration successful")
-    raise HTTPException(status_code=401, detail="User already exists")
+def register_user(username = Body(), password = Body(), role = Body("user")):
+    if function.register_user(username=username, password=password, role=role):
+        return {"message": "user registration successful"}
+    raise HTTPException(status_code=400, detail="User already exists")
