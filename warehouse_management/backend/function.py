@@ -3,6 +3,8 @@ from sqlalchemy import Column, Integer, String, Float, Date, create_engine, Fore
 from sqlalchemy.orm import Session, declarative_base, session
 from fastapi import HTTPException
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 
 DB_PATH = "warehouse.db"
 engine = create_engine(f"sqlite:///{DB_PATH}")
@@ -28,7 +30,11 @@ class DispatchBatches(Base):
     dispatch_date = Column(Date, default=date.today)
     dispatch_status = Column(String)
 
-
+class User(Base):
+    __tablename__ = "users"
+    user_id = Column(Integer, primary_key=True)
+    username = Column(String)
+    password = Column(String)
 
 Base.metadata.create_all(engine)
 
@@ -120,18 +126,40 @@ def dispatch_summary():
     return response
 
 
-# def add_package(packages):
-#     session = Session(engine)
-#
-#
-#     for package in packages:
-#         response = Package(package_name=package.package_name, destination=package.destination, weight=package.weight,arrival_date=package.arrival_date, status=package.status, batch_id=package.batch_id)
-#
-#         session.add(response)
-#     print("added packages")
-#     session.commit()
-#     session.close()
+def add_package(packages):
+    session = Session(engine)
 
+    for package in packages:
+        response = Package(
+            package_name=package["package_name"],
+            destination=package["destination"],
+            weight=package["weight"],
+            arrival_date=date.fromisoformat(package["arrival_date"]),
+            status=package["status"],
+            batch_id=int(package["batch_id"]) if package.get("batch_id") else None
+        )
+        session.add(response)
+
+    print("added packages")
+    session.commit()
+    session.close()
+
+def add_batches(batches):
+    session = Session(engine)
+
+    for batch in batches:
+        response = DispatchBatches(
+            batch_number=batch["batch_number"],
+            destination=batch["destination"],
+            vehicle=batch["vehicle"],
+            dispatch_date=date.fromisoformat(batch["dispatch_date"]),
+            dispatch_status=batch["dispatch_status"]
+        )
+        session.add(response)
+
+    print("added batches")
+    session.commit()
+    session.close()
 
 packages = [
   {
@@ -244,22 +272,129 @@ packages = [
   }
 ]
 
-# add_package(packages)
+batches = [
+  {
+    "id": 1,
+    "batch_number": "BATCH-1001",
+    "destination": "Bangalore",
+    "vehicle": "101",
+    "dispatch_date": "2026-11-08",
+    "dispatch_status": "completed"
+  },
+  {
+    "id": 2,
+    "batch_number": "BATCH-1002",
+    "destination": "Mysore",
+    "vehicle": "102",
+    "dispatch_date": "2026-11-09",
+    "dispatch_status": "pending"
+  },
+  {
+    "id": 3,
+    "batch_number": "BATCH-1003",
+    "destination": "Chennai",
+    "vehicle": "103",
+    "dispatch_date": "2026-11-09",
+    "dispatch_status": "in_transit"
+  },
+  {
+    "id": 4,
+    "batch_number": "BATCH-1004",
+    "destination": "Hyderabad",
+    "vehicle": "104",
+    "dispatch_date": "2026-11-10",
+    "dispatch_status": "pending"
+  },
+  {
+    "id": 5,
+    "batch_number": "BATCH-1005",
+    "destination": "Mumbai",
+    "vehicle": "105",
+    "dispatch_date": "2026-11-10",
+    "dispatch_status": "completed"
+  },
+  {
+    "id": 6,
+    "batch_number": "BATCH-1006",
+    "destination": "Pune",
+    "vehicle": "106",
+    "dispatch_date": "2026-11-11",
+    "dispatch_status": "pending"
+  },
+  {
+    "id": 7,
+    "batch_number": "BATCH-1007",
+    "destination": "Delhi",
+    "vehicle": "107",
+    "dispatch_date": "2026-11-11",
+    "dispatch_status": "completed"
+  },
+  {
+    "id": 8,
+    "batch_number": "BATCH-1008",
+    "destination": "Kochi",
+    "vehicle": "108",
+    "dispatch_date": "2026-11-12",
+    "dispatch_status": "in_transit"
+  },
+  {
+    "id": 9,
+    "batch_number": "BATCH-1009",
+    "destination": "Bangalore",
+    "vehicle": "109",
+    "dispatch_date": "2026-11-12",
+    "dispatch_status": "pending"
+  },
+  {
+    "id": 10,
+    "batch_number": "BATCH-1010",
+    "destination": "Mysore",
+    "vehicle": "110",
+    "dispatch_date": "2026-11-13",
+    "dispatch_status": "completed"
+  },
+  {
+    "id": 11,
+    "batch_number": "BATCH-1011",
+    "destination": "Chennai",
+    "vehicle": "111",
+    "dispatch_date": "2026-11-13",
+    "dispatch_status": "pending"
+  },
+  {
+    "id": 12,
+    "batch_number": "BATCH-1012",
+    "destination": "Hyderabad",
+    "vehicle": "112",
+    "dispatch_date": "2026-11-14",
+    "dispatch_status": "in_transit"
+  }
+]
 
 USER_NAME = "Kaif"
 PASSWORD = "12345"
 
-ACCESS_TOKEN_EXPIRY = 1
+ACCESS_TOKEN_EXPIRY = 10
 REFRESH_TOKEN_EXPIRY = 7 * 24 * 60
 SECRET_KEY = "hbsdkkfhjbiiss"
 ALGORITHM = "HS256"
+ph = PasswordHasher()
 
 def verify_login(username, password):
-    if username == USER_NAME and password == PASSWORD:
-            access_token = create_token(username=username,token_type="access")
-            refresh_token = create_token(username=username,token_type="refresh")
-            return {"access_token": access_token, "refresh_token": refresh_token}
-    return None
+    session = Session(engine)
+    user = session.query(User).filter(User.username == username).first()
+    if not user:
+        session.close()
+        return False
+    try:
+        ph.verify(user.password, password)
+    except VerifyMismatchError:
+        session.close()
+        return False
+    session.close()
+    access_token = create_token(username=username, token_type="access")
+    refresh_token = create_token(username=username, token_type="refresh")
+    return {"access_token" : access_token, "refresh_token" : refresh_token}
 
 
 def create_token(username, token_type):
@@ -276,7 +411,21 @@ def create_token(username, token_type):
 
 def verify_token(token, token_type):
     try:
-        payload = jwt.decode(jwt=token, key=SECRET_KEY, algorithms=[ALGORITHM], token_types=token_type)
-        return payload["username"]
+        payload = jwt.decode(jwt=token,key=SECRET_KEY,algorithms=[ALGORITHM])
     except:
         return False
+
+    if payload["token_type"] == token_type:
+        return payload["username"]
+    return False
+
+def register_user(username, password):
+    session = Session(engine)
+    user_exist = session.query(User).filter(User.username == username).first()
+    if user_exist is not None:
+        session.close()
+        return False
+    session.add(User(username=username, password=ph.hash(password)))
+    session.commit()
+    session.close()
+    return True
