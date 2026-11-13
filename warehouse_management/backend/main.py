@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header, Body
 from pydantic import BaseModel
 import function
+from typing import Optional
 
 app = FastAPI()
 
@@ -9,11 +10,13 @@ class Package(BaseModel):
     destination: str
     weight: float
     status: str
-
-class PackageFilter(BaseModel):
-    destination: optionalstr = None
-    status: str
     arrival_date: str
+
+class UpdatePackage(BaseModel):
+    package_id: int
+    weight: Optional[float] = None
+    destination: Optional[str] = None
+    status: Optional[str] = None
 
 @app.post("/register")
 def register(package:Package, token = Header(None)):
@@ -31,7 +34,7 @@ def get_registration(token = Header(None)):
     return function.get_registration()
 
 @app.get("/packages/filter")
-def filter_package(destination=None, status=None, arrival_date=None,token = Header(None)):
+def filter_package(destination: str = None, status:str = None, arrival_date: str = None, token = Header(None)):
     username = function.verify_token(token, "access")
     if not username :
         raise HTTPException(status_code=401)
@@ -45,11 +48,11 @@ def get_specific_package(package_id:int,token = Header(None)):
     return function.get_specific_package(package_id=package_id)
 
 @app.patch("/packages/update")
-def update_package(package_id:int, weight:float, destination :str, status:str, token = Header(None)):
+def update_package(update_data: UpdatePackage, token = Header(None)):
     username = function.verify_token(token, "access")
     if not username:
         raise HTTPException(status_code=401)
-    return function.update_package(package_id=package_id, weight=weight, destination=destination, status=status)
+    return function.update_package(package_id=update_data.package_id, weight=update_data.weight, destination=update_data.destination, status=update_data.status)
 
 @app.delete("/packages/{package_id}")
 def delete_package(package_id:int, token = Header(None)):
@@ -59,7 +62,7 @@ def delete_package(package_id:int, token = Header(None)):
     return function.delete_specific_package(package_id=package_id)
 
 @app.get("/batches/filter")
-def filter_batch(destination=None, vehicle=None, dispatch_status=None,token = Header(None)):
+def filter_batch(destination:str =None, vehicle:str =None, dispatch_status:str =None,token = Header(None)):
     username = function.verify_token(token, "access")
     if not username:
         raise HTTPException(status_code=401)
