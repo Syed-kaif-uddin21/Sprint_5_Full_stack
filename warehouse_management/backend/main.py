@@ -2,8 +2,18 @@ from fastapi import FastAPI, HTTPException, Header, Body
 from pydantic import BaseModel
 import function
 from typing import Optional
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Package(BaseModel):
     name: str

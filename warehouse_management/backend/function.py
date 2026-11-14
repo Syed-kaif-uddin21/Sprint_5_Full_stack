@@ -438,3 +438,7 @@ def register_user(username, password, role="user"):
     session.commit()
     session.close()
     return True
+
+if __name__ == "__main__":
+    add_batches(batches)
+    add_package(packages)
