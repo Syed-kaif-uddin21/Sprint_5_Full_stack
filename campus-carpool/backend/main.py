@@ -36,7 +36,7 @@ def get_rides(
     token = Header(None)
 ):
     username = functions.verify_token(token, "access")
-    if not username:
+    if username is None:
         raise HTTPException(status_code=401)
     from_val = from_location or from_place
     to_val = to_location or to_place
@@ -44,8 +44,13 @@ def get_rides(
     return E1.get_rides(from_location=from_val, to_location=to_val, date=date_val)
 
 # --- E2: Get one ride by ID with passengers ---
-@app.get("/get_ride")
-def get_ride(ride_id: Optional[int] = None, id: Optional[int] = None):
+@app.get("/get_ride/id")
+def get_ride(ride_id: Optional[int] = None, id: Optional[int] = None, token = Header(None)):
+
+    username = functions.verify_token(token, "access")
+    if username is None:
+        raise HTTPException(status_code=401)
+
     target_id = ride_id if ride_id is not None else id
     if target_id is None:
         raise HTTPException(status_code=422, detail="Ride id is required")
@@ -56,41 +61,67 @@ def get_ride(ride_id: Optional[int] = None, id: Optional[int] = None):
 
 # --- E3: Offer a ride ---
 @app.post("/offer_ride")
-def offer_ride(driver_roll: str, from_place: str, to_place: str, ride_date: date, depart_time: time, total_seats: int):
+def offer_ride(driver_roll: str, from_place: str, to_place: str, ride_date: date, depart_time: time, total_seats: int, token = Header(None)):
+    username = functions.verify_token(token, "access")
+    if username is None:
+        raise HTTPException(status_code=401)
     return E3.offer_ride(driver_roll=driver_roll, from_place=from_place, to_place=to_place, ride_date=ride_date, depart_time=depart_time, total_seats=total_seats)
 
 # --- E4: Cancel a ride ---
 @app.patch("/cancel")
-def cancel(ride_id: int, driver_roll: str):
+def cancel(ride_id: int, driver_roll: str, token = Header(None)):
+
+    username = functions.verify_token(token, "access")
+    if username is None:
+        raise HTTPException(status_code=401)
     return E4.cancel_ride(ride_id, driver_roll)
 
 # --- E5: Join a ride ---
 @app.post("/book_ride")
-def book_ride(ride_id: int, roll_no: str):
+def book_ride(ride_id: int, roll_no: str, token = Header(None)):
+
+    username = functions.verify_token(token, "access")
+    if username is None:
+        raise HTTPException(status_code=401)
+
     if ride_id < 1:
         raise HTTPException(status_code=400, detail="Ride id must be greater than 0")
     return E5.join_ride(ride_id, roll_no)
 
 # --- E6: Leave a ride ---
 @app.patch("/ride")
-def leave_ride(ride_id: int, roll_no: str):
+def leave_ride(ride_id: int, roll_no: str, token = Header(None)):
+
+    username = functions.verify_token(token, "access")
+    if username is None:
+        raise HTTPException(status_code=401)
+
     if ride_id < 1:
         raise HTTPException(status_code=400, detail="Ride id must be greater than 0")
     return E6.leave_ride(ride_id, roll_no)
 
 # --- E7: Mark a ride completed ---
 @app.patch("/complete_ride")
-def complete_ride(driver_roll: str, ride_id: int):
+def complete_ride(driver_roll: str, ride_id: int, token = Header(None)):
+    username = functions.verify_token(token, "access")
+    if username is None:
+        raise HTTPException(status_code=401)
     return E7.complete_ride(driver_roll, ride_id)
 
 # --- E8: Get a student's rides ---
 @app.get("/student_rides")
-def student_rides(roll_no: str):
+def student_rides(roll_no: str, token = Header(None)):
+    username = functions.verify_token(token, "access")
+    if username is None:
+        raise HTTPException(status_code=401)
     return E8.student_rides(roll_no)
 
 # --- E9: Get popular routes ---
 @app.get("/popular_routes")
-def popular_routes():
+def popular_routes(token = Header(None)):
+    username = functions.verify_token(token, "access")
+    if username is None:
+        raise HTTPException(status_code=401)
     return E9.popular_routes()
 
 @app.post("/login")
